@@ -152,7 +152,7 @@ class TimeAndSizeFlushingQueue:
                         messages.append(self._queue.popleft()[1])
                     except IndexError:
                         break
-                if self._fn is not None:
+                if self._fn:
                     self._fn(messages)
         try:
             if self._seconds is None:
