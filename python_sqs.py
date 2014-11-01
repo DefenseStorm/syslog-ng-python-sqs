@@ -97,7 +97,7 @@ class TimeAndSizeFlushingQueue:
         True
         """
         try:
-            return force and len(self._queue) > 0 \
+            return force and self._queue \
                     or self._lines is not None and len(self._queue) >= self._lines \
                     or self._seconds is not None \
                         and time.time() - self._queue[0][0] >= self._seconds
