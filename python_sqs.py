@@ -235,7 +235,7 @@ def init():
         groups = [messages[i::10] for i in range(10)]
         json_groups = [json.dumps(group) for group in groups if len(group) > 0]
         sqs_messages = [(i, json, 0) for i, json in enumerate(json_groups)]
-        sqs_queue.write_batch(groups)
+        sqs_queue.write_batch(sqs_messages)
 
     kwargs = {"flush_fn": flush_fn}
     if config.has_section("Flush"):
