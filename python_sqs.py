@@ -228,7 +228,7 @@ def init():
         config.get("AWS", "Region"),
         aws_access_key_id=config.get("AWS", "AccessKeyID"),
         aws_secret_access_key=config.get("AWS", "SecretAccessKey"))
-    sqs_queue = conn.get_queue("AWS", "SQSQueueName")
+    sqs_queue = conn.get_queue(config.get("AWS", "SQSQueueName"))
 
     def flush_fn(messages):
         import json
