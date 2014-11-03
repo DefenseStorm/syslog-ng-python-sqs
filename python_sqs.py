@@ -219,7 +219,6 @@ def queue(message):
 def init():
     global _queue
     from ConfigParser import SafeConfigParser
-    import json
     import boto.sqs as sqs
     config = SafeConfigParser()
     config.read('/etc/syslog-ng/python_sqs.conf')
@@ -231,6 +230,7 @@ def init():
     sqs_queue = conn.get_queue("AWS", "SQSQueueName")
 
     def flush_fn(messages):
+        import json
         groups = [messages[i::10] for i in range(10)]
         json_groups = [json.dumps(group) for group in groups if len(group) > 0]
         sqs_messages = [(i, json, 0) for i, json in enumerate(json_groups)]
