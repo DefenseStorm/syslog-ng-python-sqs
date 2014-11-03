@@ -210,14 +210,14 @@ class TimeAndSizeFlushingQueue:
             self._timer = None
         self._flush_queue(True)
 
-queue = None
+_queue = None
 
 def queue(message):
-    global queue
-    queue.queue(message)
+    global _queue
+    _queue.queue(message)
 
 def init():
-    global queue
+    global _queue
     from ConfigParser import SafeConfigParser
     import json
     import boto.sqs as sqs
@@ -243,12 +243,12 @@ def init():
         if config.has_option("Flush", "Lines"):
             kwargs["flush_lines"] = config.getint("Flush", "Lines")
 
-    queue = TimeAndSizeFlushingQueue(**kwargs)
+    _queue = TimeAndSizeFlushingQueue(**kwargs)
 
 def deinit():
-    global queue
-    queue.close()
-    queue = None
+    global _queue
+    _queue.close()
+    _queue = None
 
 if __name__ == "__main__":
     import doctest
