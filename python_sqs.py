@@ -115,10 +115,9 @@ class TimeAndSizeFlushingQueue:
         True
         """
         try:
-            return bool(force and self._queue
-                    or self._lines is not None and len(self._queue) >= self._lines
-                    or self._seconds is not None
-                        and time.time() - self._queue[0][0] >= self._seconds)
+            return bool(self._queue and 
+                    (force or len(self._queue) >= self._lines
+                        or time.time() - self._queue[0][0] >= self._seconds))
         except IndexError:
             return False
 
@@ -133,14 +132,14 @@ class TimeAndSizeFlushingQueue:
         ...     msgs = messages
         >>> queue = TimeAndSizeFlushingQueue(flush_fn=fn)
         >>> queue.queue("a message")
-        >>> queue._flush_queue(True)
         >>> msgs
         ['a message']
         >>> queue.queue("1 message")
-        >>> queue.queue("2 message")
-        >>> queue.close()
         >>> msgs
-        ['1 message', '2 message']
+        ['1 message']
+        >>> queue.queue("2 message")
+        >>> msgs
+        ['2 message']
         >>> queue = TimeAndSizeFlushingQueue(flush_fn=fn, flush_seconds=1, flush_lines=2)
         >>> queue._queue.append((time.time(), "1 message")) # Don't use .queue cuz timer
         >>> queue._queue.append((time.time(), "2 message")) # Don't use .queue cuz timer
@@ -165,7 +164,7 @@ class TimeAndSizeFlushingQueue:
                 if not self._should_flush(force):
                     break
                 messages = []
-                while self._lines is None or len(messages) < self._lines:
+                while len(messages) < self._lines:
                     try:
                         messages.append(self._queue.popleft()[1])
                     except IndexError:
@@ -187,10 +186,14 @@ class TimeAndSizeFlushingQueue:
         Continues flushing until self._should_flush returns false.
         Batches messages by self._lines if set.
 
-        >>> queue = TimeAndSizeFlushingQueue()
+        >>> msgs = None
+        >>> def fn(messages):
+        ...     global msgs
+        ...     msgs = messages
+        >>> queue = TimeAndSizeFlushingQueue(flush_fn=fn)
         >>> queue.queue("a message")
-        >>> queue._queue
-        deque([(..., 'a message')])
+        >>> msgs
+        ['a message']
         >>> queue.close()
         >>> queue = TimeAndSizeFlushingQueue(flush_lines=1)
         >>> queue.queue("a message")
@@ -213,6 +216,10 @@ class TimeAndSizeFlushingQueue:
         >>> queue._queue
         deque([])
         """
+        if not self._lines:
+            if self._fn:
+                self._fn([message])
+            return
         self._queue.append((time.time(), message))
         if len(self._queue) >= self._lines:
             self._reset_timer(0)
@@ -248,9 +255,13 @@ def init():
         aws_secret_access_key=config.get("AWS", "SecretAccessKey"))
     sqs_queue = conn.get_queue(config.get("AWS", "SQSQueueName"))
 
+    flush_single = config.getboolean("Flush", "Single")
     def flush_fn(messages):
         import json
-        groups = [messages[i::10] for i in range(10)]
+        if flush_single:
+            groups = messages
+        else:
+            groups = [messages[i::10] for i in range(10)]
         json_groups = [json.dumps(group) for group in groups if len(group) > 0]
         sqs_messages = [(i, json, 0) for i, json in enumerate(json_groups)]
         sqs_queue.write_batch(sqs_messages)
@@ -260,7 +271,10 @@ def init():
         if config.has_option("Flush", "Seconds"):
             kwargs["flush_seconds"] = config.getfloat("Flush", "Seconds")
         if config.has_option("Flush", "Lines"):
-            kwargs["flush_lines"] = config.getint("Flush", "Lines")
+            flush_lines = config.getint("Flush", "Lines")
+            if flush_single and flush_lines > 10:
+                raise Error("Cannot send more than 10 messages to SQS in a flush")
+            kwargs["flush_lines"] = flush_lines
 
     _queue = TimeAndSizeFlushingQueue(**kwargs)
 
