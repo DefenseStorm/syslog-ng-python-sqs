@@ -222,7 +222,7 @@ class TimeAndSizeFlushingQueue:
             return
         self._queue.append((time.time(), message))
         if len(self._queue) >= self._lines:
-            self._reset_timer(0)
+            self._flush_queue()
         else:
             self._start_timer()
 
