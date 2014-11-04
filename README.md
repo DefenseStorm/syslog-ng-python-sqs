@@ -8,6 +8,7 @@ This is a Python destination driver for syslog-ng which writes messages to SQS i
 
 - [x] Add a flag to disable grouping of messages to SQS
 - [ ] Figure out what to do if a serialized group or batch exceeds SQS size limits
+- [ ] Handle exceptions from calling SQS and retry
 
 ## Prerequisites
 
