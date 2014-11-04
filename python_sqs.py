@@ -255,7 +255,8 @@ def init():
         aws_secret_access_key=config.get("AWS", "SecretAccessKey"))
     sqs_queue = conn.get_queue(config.get("AWS", "SQSQueueName"))
 
-    flush_single = config.getboolean("Flush", "Single")
+    flush_single = config.has_option("Flush", "Single") and \
+            config.getboolean("Flush", "Single")
     def flush_fn(messages):
         import json
         if flush_single:
