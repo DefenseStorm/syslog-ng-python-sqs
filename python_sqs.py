@@ -268,14 +268,13 @@ def init():
         sqs_queue.write_batch(sqs_messages)
 
     kwargs = {"flush_fn": flush_fn}
-    if config.has_section("Flush"):
-        if config.has_option("Flush", "Seconds"):
-            kwargs["flush_seconds"] = config.getfloat("Flush", "Seconds")
-        if config.has_option("Flush", "Lines"):
-            flush_lines = config.getint("Flush", "Lines")
-            if flush_single and flush_lines > 10:
-                raise Error("Cannot send more than 10 messages to SQS in a flush")
-            kwargs["flush_lines"] = flush_lines
+    if config.has_option("Flush", "Seconds"):
+        kwargs["flush_seconds"] = config.getfloat("Flush", "Seconds")
+    if config.has_option("Flush", "Lines"):
+        flush_lines = config.getint("Flush", "Lines")
+        if flush_single and flush_lines > 10:
+            raise Error("Cannot send more than 10 messages to SQS in a flush")
+        kwargs["flush_lines"] = flush_lines
 
     _queue = TimeAndSizeFlushingQueue(**kwargs)
 
