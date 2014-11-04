@@ -240,7 +240,7 @@ def init():
     import sys
     import boto.sqs as sqs
     config = SafeConfigParser()
-    config.read(len(sys.argv) > 1 and sys.argv[1] or '/etc/syslog-ng/python_sqs.conf')
+    config.read('/etc/syslog-ng/python_sqs.conf')
 
     conn = sqs.connect_to_region(
         config.get("AWS", "Region"),
