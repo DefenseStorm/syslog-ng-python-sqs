@@ -291,14 +291,17 @@ def init():
     flush_single = config.has_option("Flush", "Single") and \
             config.getboolean("Flush", "Single")
     def flush_fn(messages):
-        import json
-        if flush_single:
-            groups = messages
-        else:
-            groups = [messages[i::10] for i in range(10)]
-        json_groups = [json.dumps(group) for group in groups if len(group) > 0]
-        sqs_messages = [(i, json, 0) for i, json in enumerate(json_groups)]
-        sqs_queue.write_batch(sqs_messages)
+        try:
+            import json
+            if flush_single:
+                groups = messages
+            else:
+                groups = [messages[i::10] for i in range(10)]
+            json_groups = [json.dumps(group) for group in groups if len(group) > 0]
+            sqs_messages = [(i, json, 0) for i, json in enumerate(json_groups)]
+            sqs_queue.write_batch(sqs_messages)
+        except Exception, e:
+            log.error("Ouch", e)
 
     kwargs = {"flush_fn": flush_fn}
     if config.has_option("Flush", "Seconds"):
