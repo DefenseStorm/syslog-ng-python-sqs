@@ -22,6 +22,8 @@ from threading import Timer, Lock
 from collections import deque
 import time
 
+log = None
+
 class TimeAndSizeFlushingQueue:
 
     def __init__(self, flush_fn=None, flush_seconds=None, flush_lines=None):
@@ -244,12 +246,41 @@ def queue(message):
     _queue.queue(message)
 
 def init():
-    global _queue
+    global _queue, log
     from ConfigParser import SafeConfigParser
-    import sys
+    import sys, logging, logging.config
     import boto.sqs as sqs
     config = SafeConfigParser()
     config.read('/etc/syslog-ng/python_sqs.conf')
+
+    if config.has_option("Logging", "Level"):
+        log_level = config.get("Logging", "Level")
+    else:
+        log_level = 'DEBUG'
+    log_config = {
+            'version': 1,
+            'formatters': {
+                'syslog': {
+                    'format': '%(name)s[%(process)d]: %(threadName)s %(filename)s#%(lineno)d %(message)s'
+                },
+            },
+            'handlers': {
+                'syslog': {
+                    'class': 'logging.handlers.SysLogHandler',
+                    'level': log_level,
+                    'formatter': 'syslog',
+                    'address': '/dev/log',
+                    'facility': 'syslog'
+                },
+            },
+            'root': {
+                'level': log_level,
+                'handlers': ['syslog']
+            }
+        }
+    logging.config.dictConfig(log_config)
+    log = logging.getLogger(__name__)
+    log.debug("Logging initialized...")
 
     conn = sqs.connect_to_region(
         config.get("AWS", "Region"),
