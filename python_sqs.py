@@ -195,10 +195,12 @@ class TimeAndSizeFlushingQueue:
         >>> msgs
         ['a message']
         >>> queue.close()
-        >>> queue = TimeAndSizeFlushingQueue(flush_lines=1)
+        >>> queue = TimeAndSizeFlushingQueue(flush_seconds=1, flush_lines=2)
         >>> queue.queue("a message")
+        >>> time.sleep(.001)
         >>> queue._timer
         <_Timer(Thread-..., started ...)>
+        >>> queue.queue("a message")
         >>> time.sleep(.001)
         >>> queue._timer
         >>> queue._queue
