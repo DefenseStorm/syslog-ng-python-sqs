@@ -242,6 +242,7 @@ class TimeAndSizeFlushingQueue:
 _queue = None
 
 def queue(message):
+    log.debug("Queueing message %s", message)
     global _queue
     try:
         _queue.queue(message)
@@ -274,18 +275,21 @@ def init():
                     'formatter': 'syslog',
                     'address': '/dev/log',
                     'facility': 'syslog'
-                },
-                'file': {
-                    'class': 'logging.handlers.RotatingFileHandler',
-                    'level': log_level,
-                    'filename': '/var/log/python_sqs'
                 }
             },
             'root': {
                 'level': log_level,
-                'handlers': ['file', 'syslog']
+                'handlers': ['syslog']
             }
         }
+    if config.has_option("Logging", "Filename"):
+        log_config['file'] = {
+                'class': 'logging.handlers.RotatingFileHandler',
+                'maxBytes': 10*1024*1024, # 10MiB
+                'level': log_level,
+                'filename': config.get_option("Logging", "Filename")
+            }
+        log_config['root']['handlers'].append('file')
     logging.config.dictConfig(log_config)
     log = logging.getLogger(__name__)
     log.debug("Python SQS initialized...")
@@ -299,6 +303,7 @@ def init():
     flush_single = config.has_option("Flush", "Single") and \
             config.getboolean("Flush", "Single")
     def flush_fn(messages):
+        log.debug("Flushing messages %s", messages)
         try:
             import json
             if flush_single:
@@ -323,6 +328,7 @@ def init():
     _queue = TimeAndSizeFlushingQueue(**kwargs)
 
 def deinit():
+    log.debug("Deinitializing Python SQS")
     global _queue
     _queue.close()
     _queue = None
