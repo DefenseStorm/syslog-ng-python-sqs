@@ -243,7 +243,10 @@ _queue = None
 
 def queue(message):
     global _queue
-    _queue.queue(message)
+    try:
+        _queue.queue(message)
+    except Exception, e:
+        log.error("Error queueing message %s", message, e)
 
 def init():
     global _queue, log
@@ -262,7 +265,7 @@ def init():
             'formatters': {
                 'syslog': {
                     'format': '%(name)s[%(process)d]: %(threadName)s %(filename)s#%(lineno)d %(message)s'
-                },
+                }
             },
             'handlers': {
                 'syslog': {
@@ -272,15 +275,20 @@ def init():
                     'address': '/dev/log',
                     'facility': 'syslog'
                 },
+                'file': {
+                    'class': 'logging.handlers.RotatingFileHandler',
+                    'level': log_level,
+                    'filename': '/var/log/python_sqs'
+                }
             },
             'root': {
                 'level': log_level,
-                'handlers': ['syslog']
+                'handlers': ['file', 'syslog']
             }
         }
     logging.config.dictConfig(log_config)
     log = logging.getLogger(__name__)
-    log.debug("Logging initialized...")
+    log.debug("Python SQS initialized...")
 
     conn = sqs.connect_to_region(
         config.get("AWS", "Region"),
@@ -301,7 +309,7 @@ def init():
             sqs_messages = [(i, json, 0) for i, json in enumerate(json_groups)]
             sqs_queue.write_batch(sqs_messages)
         except Exception, e:
-            log.error("Ouch", e)
+            log.error("Error flushing messages: %s", message, e)
 
     kwargs = {"flush_fn": flush_fn}
     if config.has_option("Flush", "Seconds"):
