@@ -311,7 +311,7 @@ def init():
             else:
                 groups = [messages[i::10] for i in range(10)]
             log.debug("Messages grouped as %s", [len(g) for g in groups])
-            json_groups = [json.dumps(group) for group in groups if len(group) > 0]
+            json_groups = [json.dumps(group) for group in groups if group]
             log.debug("Messages converted to json")
             sqs_messages = [(i, json, 0) for i, json in enumerate(json_groups)]
             log.debug("Messages prepped for SQS")
