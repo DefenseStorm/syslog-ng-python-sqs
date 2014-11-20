@@ -283,11 +283,11 @@ def init():
             }
         }
     if config.has_option("Logging", "Filename"):
-        log_config['file'] = {
+        log_config['handlers']['file'] = {
                 'class': 'logging.handlers.RotatingFileHandler',
                 'maxBytes': 10*1024*1024, # 10MiB
                 'level': log_level,
-                'filename': config.get_option("Logging", "Filename")
+                'filename': config.get("Logging", "Filename")
             }
         log_config['root']['handlers'].append('file')
     logging.config.dictConfig(log_config)
