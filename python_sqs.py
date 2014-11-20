@@ -247,7 +247,7 @@ def queue(message):
     try:
         _queue.queue(message)
     except Exception, e:
-        log.error("Error queueing message %s", message, e)
+        log.error("Error queueing message %s", message, exc_info=e)
 
 def init():
     global _queue, log
@@ -303,18 +303,25 @@ def init():
     flush_single = config.has_option("Flush", "Single") and \
             config.getboolean("Flush", "Single")
     def flush_fn(messages):
-        log.debug("Flushing messages %s", messages)
+        log.debug("Flushing %d messages", len(messages))
         try:
             import json
             if flush_single:
                 groups = messages
             else:
                 groups = [messages[i::10] for i in range(10)]
+            log.debug("Messages grouped as %s", [len(g) for g in groups])
             json_groups = [json.dumps(group) for group in groups if len(group) > 0]
+            log.debug("Messages converted to json")
             sqs_messages = [(i, json, 0) for i, json in enumerate(json_groups)]
-            sqs_queue.write_batch(sqs_messages)
+            log.debug("Messages prepped for SQS")
+            br = sqs_queue.write_batch(sqs_messages)
+            if br.results:
+                log.debug("Successfully flushed %d messages: %s", len(br.results), br.results)
+            if br.errors:
+                log.warn("Failed to flush %d messages: %s", len(br.errors), br.errors)
         except Exception, e:
-            log.error("Error flushing messages: %s", message, e)
+            log.error("Error flushing messages: %s", messages, exc_info=e)
 
     kwargs = {"flush_fn": flush_fn}
     if config.has_option("Flush", "Seconds"):
