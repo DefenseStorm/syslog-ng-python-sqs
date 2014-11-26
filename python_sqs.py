@@ -333,6 +333,8 @@ def init(json_input=False):
     flush_single = config.has_option("Flush", "Single") and config.getboolean("Flush", "Single")
     flush_retries = config.has_option("Flush", "Retries") and config.getint("Flush", "Retries")
     def flush_fn(messages, retries=flush_retries):
+        if not messages:
+            return
         log.debug("Flushing %d messages", len(messages))
         try:
             if flush_single:
