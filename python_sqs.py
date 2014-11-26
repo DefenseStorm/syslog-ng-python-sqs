@@ -317,14 +317,17 @@ def init(json_input=False):
             else:
                 import json
                 json_groups = [json.dumps(group) for group in groups if group]
-            log.debug("Messages converted to json")
+            log.debug("Messages converted to json %sb", [len(g) for g in groups])
             sqs_messages = [(i, json, 0) for i, json in enumerate(json_groups)]
             log.debug("Messages prepped for SQS")
             br = sqs_queue.write_batch(sqs_messages)
             if br.results:
-                log.debug("Successfully flushed %d messages: %s", len(br.results), br.results)
+                log.debug("Successfully flushed %d groups: %s", len(br.results), br.results)
             if br.errors:
-                log.warn("Failed to flush %d messages: %s", len(br.errors), br.errors)
+                messages = []
+                for error in br.errors:
+                    messages += groups[error['id']]
+                raise Exception("Failed to flush %d groups: %s" % (len(br.errors), br.errors))
         except Exception, e:
             log.error("Error flushing messages: %s", messages, exc_info=e)
 
