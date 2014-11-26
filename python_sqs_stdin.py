@@ -5,11 +5,11 @@ import python_sqs
 log = None
 line = None
 try:
-    python_sqs.init(json_input=True)
+    python_sqs.init(json_input=False)
     log = logging.getLogger(__name__)
     line = sys.stdin.readline()
     while line:
-        python_sqs.queue(line.strip())
+        python_sqs.queue(json.loads(line.strip()))
         line = sys.stdin.readline()
 except e:
     if log:
