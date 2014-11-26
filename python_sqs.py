@@ -184,9 +184,17 @@ class TimeAndSizeFlushingQueue:
                     break
                 flushed_bytes = 0
                 messages = []
-                while len(messages) < self._lines and (self._bytes is None or flushed_bytes < self._bytes):
+                while len(messages) < self._lines:
                     try:
                         message = self._queue.popleft()[1]
+                        if self._bytes is not None:
+                            if len(message) > self._bytes:
+                                log.error("Message too large to flush (%d > %d): %s",
+                                        len(message), self._bytes, message)
+                                continue
+                            elif flushed_bytes + len(message) > self._bytes:
+                                self._queue.appendleft((0, message))
+                                break
                         flushed_bytes += len(message)
                         messages.append(message)
                     except IndexError:
