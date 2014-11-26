@@ -26,7 +26,7 @@ log = None
 
 class TimeAndSizeFlushingQueue:
 
-    def __init__(self, flush_fn=None, flush_seconds=None, flush_lines=None):
+    def __init__(self, flush_fn=None, flush_seconds=None, flush_lines=None, flush_bytes=None):
         self._timer = None
         # Deadlock semantics: NEVER take both locks on the same thread
         self._timer_lock = Lock() # Guards all changes to `timer`
@@ -36,6 +36,10 @@ class TimeAndSizeFlushingQueue:
         self._fn = flush_fn
         self._seconds = flush_seconds
         self._lines = flush_lines
+        self._bytes = flush_bytes
+        if self._bytes is not None:
+            self._queued_bytes = 0
+            self._bytes_lock = Lock()
 
     def __del__(self):
         self.close()
@@ -119,9 +123,22 @@ class TimeAndSizeFlushingQueue:
         try:
             return bool(self._queue and 
                     (force or len(self._queue) >= self._lines
-                        or time.time() - self._queue[0][0] >= self._seconds))
+                        or self._seconds is not None and time.time() - self._queue[0][0] >= self._seconds
+                        or self._full_of_bytes()))
         except IndexError:
             return False
+
+    def _full_of_bytes(self):
+        if self._bytes is None:
+            return False
+        with self._bytes_lock:
+            return self._queued_bytes >= self._bytes
+
+    def _add_queued_bytes(self, delta):
+        if self._bytes is None:
+            return
+        with self._bytes_lock:
+            self._queued_bytes += delta
 
     def _flush_queue(self, force=False):
         """Flushes messages to the specified function in batches.
@@ -165,12 +182,16 @@ class TimeAndSizeFlushingQueue:
                 # Break if another thread flushed enough while waiting for lock
                 if not self._should_flush(force):
                     break
+                flushed_bytes = 0
                 messages = []
-                while len(messages) < self._lines:
+                while len(messages) < self._lines and (self._bytes is None or flushed_bytes < self._bytes):
                     try:
-                        messages.append(self._queue.popleft()[1])
+                        message = self._queue.popleft()[1]
+                        flushed_bytes += len(message)
+                        messages.append(message)
                     except IndexError:
                         break
+                self._add_queued_bytes(-flushed_bytes)
                 if self._fn:
                     self._fn(messages)
         try:
@@ -225,7 +246,8 @@ class TimeAndSizeFlushingQueue:
                 self._fn([message])
             return
         self._queue.append((time.time(), message))
-        if len(self._queue) >= self._lines:
+        self._add_queued_bytes(len(message))
+        if self._should_flush():
             self._flush_queue()
         else:
             self._start_timer()
@@ -300,9 +322,9 @@ def init(json_input=False):
         aws_secret_access_key=config.get("AWS", "SecretAccessKey"))
     sqs_queue = conn.get_queue(config.get("AWS", "SQSQueueName"))
 
-    flush_single = config.has_option("Flush", "Single") and \
-            config.getboolean("Flush", "Single")
-    def flush_fn(messages):
+    flush_single = config.has_option("Flush", "Single") and config.getboolean("Flush", "Single")
+    flush_retries = config.has_option("Flush", "Retries") and config.getint("Flush", "Retries")
+    def flush_fn(messages, retries=flush_retries):
         log.debug("Flushing %d messages", len(messages))
         try:
             if flush_single:
@@ -329,9 +351,21 @@ def init(json_input=False):
                     messages += groups[error['id']]
                 raise Exception("Failed to flush %d groups: %s" % (len(br.errors), br.errors))
         except Exception, e:
-            log.error("Error flushing messages: %s", messages, exc_info=e)
+            if retries:
+                log.warn("Error flushing %d messages, trying smaller batch (%d tries left)",
+                        len(messages), retries, exc_info=e)
+                flush_fn(messages[::2], retries - 1)
+                flush_fn(messages[1::2], retries - 1)
+            else:
+                log.error("Failed to flush %d messages", len(messages), exc_info=e)
+                for message in messages:
+                    log.error("Failed: %s", message)
 
     kwargs = {"flush_fn": flush_fn}
+    if config.has_option("Flush", "Bytes"):
+        kwargs["flush_bytes"] = config.getfloat("Flush", "Bytes")
+    else:
+        kwargs["flush_bytes"] = 250000 # Safely below SQS limit
     if config.has_option("Flush", "Seconds"):
         kwargs["flush_seconds"] = config.getfloat("Flush", "Seconds")
     if config.has_option("Flush", "Lines"):
