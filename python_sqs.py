@@ -276,7 +276,7 @@ def queue(message):
     global _queue
     try:
         _queue.queue(message)
-    except e:
+    except Exception, e:
         log.error("Error queueing message %s", message, exc_info=e)
 
 def init(json_input=False):
@@ -358,7 +358,7 @@ def init(json_input=False):
                 for error in br.errors:
                     messages += groups[error['id']]
                 raise Exception("Failed to flush %d groups: %s" % (len(br.errors), br.errors))
-        except e:
+        except Exception, e:
             if retries:
                 log.warn("Error flushing %d messages, trying smaller batch (%d tries left)",
                         len(messages), retries, exc_info=e)

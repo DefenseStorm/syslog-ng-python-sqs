@@ -22,7 +22,7 @@ try:
             line = unicode(line, errors='replace')
         python_sqs.queue(line)
         line = sys.stdin.readline()
-except e:
+except Exception, e:
     if log:
         log.error("Error while processing %s", line, exc_info=e)
     else:
@@ -30,5 +30,5 @@ except e:
 finally:
     try:
         python_sqs.deinit()
-    except e:
+    except Exception, e:
         print e
