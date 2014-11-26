@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from __future__ import with_statement
 import json, logging, sys
 import python_sqs
 
@@ -12,8 +11,13 @@ try:
     while line:
         python_sqs.queue(line.strip())
         line = sys.stdin.readline()
-except Exception, e:
+except e:
     if log:
         log.error("Error while processing %s", line, exc_info=e)
+    else:
+        print e
 finally:
-    python_sqs.deinit()
+    try:
+        python_sqs.deinit()
+    except e:
+        print e
