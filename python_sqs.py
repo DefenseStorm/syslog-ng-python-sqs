@@ -339,7 +339,7 @@ def init(json_input=False):
             else:
                 import json
                 json_groups = [json.dumps(group) for group in groups if group]
-            log.debug("Messages converted to json %sb", [len(g) for g in groups])
+            log.debug("Messages converted to json %s", [len(g) for g in json_groups])
             sqs_messages = [(i, json, 0) for i, json in enumerate(json_groups)]
             log.debug("Messages prepped for SQS")
             br = sqs_queue.write_batch(sqs_messages)
