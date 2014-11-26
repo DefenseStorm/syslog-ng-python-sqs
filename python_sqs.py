@@ -249,7 +249,7 @@ def queue(message):
     except Exception, e:
         log.error("Error queueing message %s", message, exc_info=e)
 
-def init():
+def init(json_input=False):
     global _queue, log
     from ConfigParser import SafeConfigParser
     import sys, logging, logging.config
@@ -311,8 +311,11 @@ def init():
             else:
                 groups = [messages[i::10] for i in range(10)]
             log.debug("Messages grouped as %s", [len(g) for g in groups])
-            json_groups = [json.dumps(group) for group in groups if group]
-            log.debug("Messages converted to json")
+            if json_input:
+                json_groups = ['[' + ','.join(message for message in group) + ']' for group in groups if group]
+            else:
+                json_groups = [json.dumps(group) for group in groups if group]
+            log.debug("Messages converted to json, %s", json_groups)
             sqs_messages = [(i, json, 0) for i, json in enumerate(json_groups)]
             log.debug("Messages prepped for SQS")
             br = sqs_queue.write_batch(sqs_messages)
