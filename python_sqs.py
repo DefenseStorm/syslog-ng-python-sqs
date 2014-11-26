@@ -305,15 +305,17 @@ def init(json_input=False):
     def flush_fn(messages):
         log.debug("Flushing %d messages", len(messages))
         try:
-            import json
             if flush_single:
                 groups = messages
             else:
                 groups = [messages[i::10] for i in range(10)]
             log.debug("Messages grouped as %s", [len(g) for g in groups])
-            if json_input:
+            if json_input and flush_single:
+                json_groups = groups
+            elif json_input:
                 json_groups = ['[' + ','.join(message for message in group) + ']' for group in groups if group]
             else:
+                import json
                 json_groups = [json.dumps(group) for group in groups if group]
             log.debug("Messages converted to json")
             sqs_messages = [(i, json, 0) for i, json in enumerate(json_groups)]
