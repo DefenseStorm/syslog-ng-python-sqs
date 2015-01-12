@@ -317,7 +317,7 @@ def init(json_input=False):
         }
     logging.config.dictConfig(log_config)
     log = logging.getLogger(__name__)
-    log.debug("Python SQS initialized...")
+    log.info("Python SQS initialized...")
 
     conn = sqs.connect_to_region(
         config.get("AWS", "Region"),
@@ -330,7 +330,7 @@ def init(json_input=False):
     def flush_fn(messages, retries=flush_retries):
         if not messages:
             return
-        log.debug("Flushing %d messages", len(messages))
+        log.info("Flushing %d messages", len(messages))
         try:
             if flush_single:
                 groups = messages
@@ -382,7 +382,7 @@ def init(json_input=False):
     _queue = TimeAndSizeFlushingQueue(**kwargs)
 
 def deinit():
-    log.debug("Deinitializing Python SQS")
+    log.info("Deinitializing Python SQS")
     global _queue
     _queue.close()
     _queue = None
