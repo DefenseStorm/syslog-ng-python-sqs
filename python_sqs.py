@@ -291,6 +291,10 @@ def init(json_input=False):
         log_level = config.get("Logging", "Level")
     else:
         log_level = 'DEBUG'
+    if config.has_option("Logging", "Filename"):
+        log_filename = config.get("Logging", "Filename")
+    else:
+        log_filename = '/var/log/python_sqs.log'
     log_config = {
             'version': 1,
             'formatters': {
@@ -299,27 +303,18 @@ def init(json_input=False):
                 }
             },
             'handlers': {
-                'syslog': {
-                    'class': 'logging.handlers.SysLogHandler',
+                'file': {
+                    'class': 'logging.handlers.RotatingFileHandler',
+                    'maxBytes': 10*1024*1024, # 10MiB
                     'level': log_level,
-                    'formatter': 'syslog',
-                    'address': '/dev/log',
-                    'facility': 'syslog'
+                    'filename': log_filename
                 }
             },
             'root': {
                 'level': log_level,
-                'handlers': ['syslog']
+                'handlers': ['file']
             }
         }
-    if config.has_option("Logging", "Filename"):
-        log_config['handlers']['file'] = {
-                'class': 'logging.handlers.RotatingFileHandler',
-                'maxBytes': 10*1024*1024, # 10MiB
-                'level': log_level,
-                'filename': config.get("Logging", "Filename")
-            }
-        log_config['root']['handlers'].append('file')
     logging.config.dictConfig(log_config)
     log = logging.getLogger(__name__)
     log.debug("Python SQS initialized...")
