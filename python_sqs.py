@@ -351,7 +351,7 @@ def init(json_input=False):
             if br.results:
                 log.debug("Successfully flushed %d groups: %s", len(br.results), br.results)
             if br.errors:
-                messages = []
+                messages = [] # Some may have succeeded, replace with failed messages for retry/logging
                 for error in br.errors:
                     messages += groups[error['id']]
                 raise Exception("Failed to flush %d groups: %s" % (len(br.errors), br.errors))
